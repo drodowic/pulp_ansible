@@ -28,7 +28,7 @@ class GalaxyVersionView(views.APIView):
     authentication_classes = []
     permission_classes = []
 
-    def get(self, request, path):
+    def get(self, request, **kwargs):
         """
         Return a response to the "GET" action.
         """

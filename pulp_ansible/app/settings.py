@@ -22,3 +22,4 @@ LOGGING = {
 
 ANSIBLE_API_HOSTNAME = "https://" + socket.getfqdn()
 ANSIBLE_CONTENT_HOSTNAME = settings.CONTENT_ORIGIN + "/pulp/content"
+ANSIBLE_DEFAULT_DISTRIBUTION_PATH = None

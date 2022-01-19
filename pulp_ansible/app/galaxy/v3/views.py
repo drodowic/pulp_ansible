@@ -11,14 +11,18 @@ from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from django_filters import filters
+from django.views.generic.base import RedirectView
+from django.conf import settings
+
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from jinja2 import Template
 from rest_framework import mixins
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from rest_framework.reverse import reverse, reverse_lazy
 from rest_framework import serializers
 from rest_framework import status as http_status
 from rest_framework import viewsets
+from rest_framework.exceptions import NotFound
 
 from pulpcore.plugin.exceptions import DigestValidationError
 from pulpcore.plugin.models import PulpTemporaryFile, Content
@@ -60,7 +64,8 @@ class AnsibleDistributionMixin:
     @property
     def _repository_version(self):
         """Returns repository version."""
-        path = self.kwargs["path"]
+        path = self.kwargs["distro_base_path"]
+
         context = getattr(self, "pulp_context", None)
         if context and context.get(path, None):
             return self.pulp_context[path]
@@ -88,6 +93,7 @@ class AnsibleDistributionMixin:
         context = super().get_serializer_context()
         if "path" in self.kwargs:
             context["path"] = self.kwargs["path"]
+        context["distro_base_path"] = self.kwargs["distro_base_path"]
         return context
 
 
@@ -161,11 +167,12 @@ class CollectionViewSet(
     ViewSet for Collections.
     """
 
-    authentication_classes = []
-    permission_classes = []
     serializer_class = CollectionSerializer
     filterset_class = CollectionFilter
     pagination_class = LimitOffsetPagination
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-collection-viewset"
 
     @property
     def _deprecation(self):
@@ -351,10 +358,11 @@ class CollectionUploadViewSet(
     ViewSet for Collection Uploads.
     """
 
-    authentication_classes = []
-    permission_classes = []
     serializer_class = CollectionOneShotSerializer
     pulp_tag_name = "Pulp_Ansible: Artifacts Collections V3"
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-collection-upload-viewset"
 
     @extend_schema(
         description="Create an artifact and trigger an asynchronous task to create "
@@ -405,7 +413,7 @@ class CollectionUploadViewSet(
         data = {
             "task": reverse(
                 "collection-imports-detail",
-                kwargs={"path": path, "pk": async_result.pk},
+                kwargs={"pk": async_result.pk},
                 request=None,
             )
         }
@@ -422,14 +430,16 @@ class CollectionVersionViewSet(
     ViewSet for CollectionVersions.
     """
 
-    authentication_classes = []
-    permission_classes = []
     serializer_class = CollectionVersionSerializer
     list_serializer_class = CollectionVersionListSerializer
     filterset_class = CollectionVersionFilter
     pagination_class = LimitOffsetPagination
 
     lookup_field = "version"
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-collection-version-viewset"
+
 
     def get_list_serializer(self, *args, **kwargs):
         """
@@ -499,11 +509,13 @@ class CollectionVersionDocsViewSet(
     ViewSet for docs_blob of CollectionVersion.
     """
 
-    authentication_classes = []
-    permission_classes = []
     serializer_class = CollectionVersionDocsSerializer
 
     lookup_field = "version"
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-collection-vesion-docs-viewset"
+
 
 
 class CollectionImportViewSet(
@@ -523,6 +535,9 @@ class CollectionImportViewSet(
         # format=openapi.FORMAT_DATETIME,
         description="Filter messages since a given timestamp",
     )
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-collection-import-viewset"
 
     @extend_schema(parameters=[since_filter])
     def retrieve(self, request, *args, **kwargs):
@@ -556,12 +571,37 @@ class RepoMetadataViewSet(
     ViewSet for Repository Metadata.
     """
 
-    authentication_classes = []
-    permission_classes = []
     serializer_class = RepoMetadataSerializer
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-repo-metadata-viewset"
 
     def get_object(self):
         """
         Returns a RepositoryVersion object.
         """
         return self._repository_version
+
+
+class RedirectLegacyDistroView(RedirectView):
+    permanent = False
+    query_string = True
+
+    def get_redirect_url(self, *args, **kwargs):
+        if "path" not in kwargs:
+            if settings.ANSIBLE_DEFAULT_DISTRIBUTION_PATH is None:
+                raise NotFound()
+            else: 
+                path = settings.ANSIBLE_DEFAULT_DISTRIBUTION_PATH
+        else:
+            path = self.kwargs["path"]
+
+        return reverse_lazy(self.url, request=self.request, kwargs={ **self.kwargs, "distro_base_path": path})
+
+
+class RedirectLegacyView(RedirectView):
+    permanent = False
+    query_string = True
+
+    def get_redirect_url(self, *args, **kwargs):
+        return reverse_lazy(self.url, request=self.request, kwargs={ **self.kwargs})

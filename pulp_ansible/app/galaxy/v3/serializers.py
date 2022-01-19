@@ -9,6 +9,15 @@ from pulp_ansible.app import models
 from pulpcore.plugin.models import ContentArtifact, RepositoryVersion
 
 
+def get_distro_context(context):
+    distro_context = {}
+    if "path" in context:
+        distro_context["path"] = context["path"]
+    if "distro_base_path" in context:
+        distro_context["distro_base_path"] = context["distro_base_path"]
+    return distro_context
+
+
 class CollectionSerializer(serializers.ModelSerializer):
     """A serializer for a Collection."""
 
@@ -39,16 +48,24 @@ class CollectionSerializer(serializers.ModelSerializer):
 
     def get_href(self, obj) -> str:
         """Get href."""
+        ctx = get_distro_context(self.context)
         return reverse(
             "collections-detail",
-            kwargs={"path": self.context["path"], "namespace": obj.namespace, "name": obj.name},
+            kwargs={
+                **ctx,
+                "namespace": obj.namespace,
+                "name": obj.name},
         )
 
     def get_versions_url(self, obj) -> str:
         """Get a link to a collection versions list."""
+        ctx = get_distro_context(self.context)
         return reverse(
             "collection-versions-list",
-            kwargs={"path": self.context["path"], "namespace": obj.namespace, "name": obj.name},
+            kwargs={
+                **ctx,
+                "namespace": obj.namespace,
+                "name": obj.name},
         )
 
     @extend_schema_field(OpenApiTypes.DATETIME)
@@ -71,10 +88,11 @@ class CollectionSerializer(serializers.ModelSerializer):
         version = sorted(
             available_versions, key=lambda ver: semantic_version.Version(ver), reverse=True
         )[0]
+        ctx = get_distro_context(self.context)
         href = reverse(
             "collection-versions-detail",
             kwargs={
-                "path": self.context["path"],
+                **ctx,
                 "namespace": obj.namespace,
                 "name": obj.name,
                 "version": version,
@@ -104,10 +122,12 @@ class CollectionVersionListSerializer(serializers.ModelSerializer):
         """
         Get href.
         """
+        ctx = get_distro_context(self.context)
+
         return reverse(
             "collection-versions-detail",
             kwargs={
-                "path": self.context["path"],
+                **ctx,
                 "namespace": obj.namespace,
                 "name": obj.name,
                 "version": obj.version,
@@ -134,9 +154,14 @@ class CollectionRefSerializer(serializers.Serializer):
 
     def get_href(self, obj) -> str:
         """Returns link to a collection."""
+        ctx = get_distro_context(self.context)
         return reverse(
             "collections-detail",
-            kwargs={"path": self.context["path"], "namespace": obj.namespace, "name": obj.name},
+            kwargs={
+                **ctx,
+                "namespace": obj.namespace,
+                "name": obj.name
+            },
         )
 
 
@@ -214,7 +239,8 @@ class UnpaginatedCollectionVersionSerializer(CollectionVersionListSerializer):
         content_artifact = ContentArtifact.objects.select_related("artifact").filter(content=obj)
         if content_artifact.get().artifact:
             host = settings.ANSIBLE_CONTENT_HOSTNAME.strip("/")
-            distro_base_path = self.context["path"]
+
+            distro_base_path = self.context.get("path", self.context["distro_base_path"])
             filename_path = obj.relative_path.lstrip("/")
             download_url = f"{host}/{distro_base_path}/{filename_path}"
             return download_url

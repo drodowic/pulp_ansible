@@ -38,10 +38,63 @@ v2_urls = [
     ),
 ]
 
-v3_urls = [
+# Legacy urls that need to be redirected to plugin/ansible/collections/<base_path>/
+legacy_v3_collection_urls = [
+    path("", views_v3.RedirectLegacyDistroView.as_view(url="repo-metadata"), name="legacy-v3-repo-metadata"),
+    path(
+        "collections/", views_v3.RedirectLegacyDistroView.as_view(url="collections-list"), name="legacy-v3-collections-list"
+    ),
+    path(
+        "artifacts/collections/",
+        views_v3.RedirectLegacyDistroView.as_view(url="collection-artifact-upload"),
+        name="legacy-v3-collection-artifact-upload",
+    ),
+    path(
+        "collections/<str:namespace>/<str:name>/",
+        views_v3.RedirectLegacyDistroView.as_view(url="collections-detail"),
+        name="legacy-v3-collections-detail",
+    ),
+    path(
+        "collections/<str:namespace>/<str:name>/versions/",
+        views_v3.RedirectLegacyDistroView.as_view(url="collection-versions-list"),
+        name="legacy-v3-collection-versions-list",
+    ),
+    path(
+        "collections/<str:namespace>/<str:name>/versions/<str:version>/",
+        views_v3.RedirectLegacyDistroView.as_view(url="collection-versions-detail"),
+        name="legacy-v3-collection-versions-detail",
+    ),
+    path(
+        "collections/<str:namespace>/<str:name>/versions/<str:version>/docs-blob/",
+        views_v3.RedirectLegacyDistroView.as_view(url="collection-versions-detail-docs"),
+        name="legacy-v3-collection-versions-detail-docs",
+    ),
+
+    path(
+        "collections/all/",
+        views_v3.RedirectLegacyDistroView.as_view(url="metadata-collection-list"),
+        name="legacy-v3-metadata-collection-list",
+    ),
+    path(
+        "collection_versions/all/",
+        views_v3.RedirectLegacyDistroView.as_view(url="metadata-collection-versions-list"),
+        name="legacy-v3-metadata-collection-versions-list",
+    ),
+]
+
+
+legacy_v3_urls = [
+    path(
+        "imports/collections/<uuid:pk>/",
+        views_v3.RedirectLegacyView.as_view(url="collection-imports-detail"),
+        name="legacy-v3-collection-imports-detail",
+    ),
+]
+
+v3_collection_urls = [
     path("", views_v3.RepoMetadataViewSet.as_view({"get": "retrieve"}), name="repo-metadata"),
     path(
-        "collections/", views_v3.CollectionViewSet.as_view({"get": "list"}), name="collections-list"
+        "index/", views_v3.CollectionViewSet.as_view({"get": "list"}), name="collections-list"
     ),
     path(
         "artifacts/collections/",
@@ -49,40 +102,50 @@ v3_urls = [
         name="collection-artifact-upload",
     ),
     path(
-        "collections/<str:namespace>/<str:name>/",
+        "index/<str:namespace>/<str:name>/",
         views_v3.CollectionViewSet.as_view({"get": "retrieve", "patch": "update"}),
         name="collections-detail",
     ),
     path(
-        "collections/<str:namespace>/<str:name>/versions/",
+        "index/<str:namespace>/<str:name>/versions/",
         views_v3.CollectionVersionViewSet.as_view({"get": "list"}),
         name="collection-versions-list",
     ),
     path(
-        "collections/<str:namespace>/<str:name>/versions/<str:version>/",
+        "index/<str:namespace>/<str:name>/versions/<str:version>/",
         views_v3.CollectionVersionViewSet.as_view({"get": "retrieve"}),
         name="collection-versions-detail",
     ),
     path(
-        "collections/<str:namespace>/<str:name>/versions/<str:version>/docs-blob/",
+        "index/<str:namespace>/<str:name>/versions/<str:version>/docs-blob/",
         views_v3.CollectionVersionDocsViewSet.as_view({"get": "retrieve"}),
         name="collection-versions-detail-docs",
     ),
+    path(
+        "all-collections/",
+        views_v3.UnpaginatedCollectionViewSet.as_view({"get": "list"}),
+        name="metadata-collection-list",
+    ),
+    path(
+        "all-versions/",
+        views_v3.UnpaginatedCollectionVersionViewSet.as_view({"get": "list"}),
+        name="metadata-collection-versions-list",
+    ),
+]
+
+v3_plugin_urls = [
+    path("collections/<str:distro_base_path>/", include(v3_collection_urls)),
     path(
         "imports/collections/<uuid:pk>/",
         views_v3.CollectionImportViewSet.as_view({"get": "retrieve"}),
         name="collection-imports-detail",
     ),
-    path(
-        "collections/all/",
-        views_v3.UnpaginatedCollectionViewSet.as_view({"get": "list"}),
-        name="metadata-collection-list",
-    ),
-    path(
-        "collection_versions/all/",
-        views_v3.UnpaginatedCollectionVersionViewSet.as_view({"get": "list"}),
-        name="metadata-collection-versions-list",
-    ),
+]
+
+v3_urls = [
+    path("", include(legacy_v3_collection_urls)),
+    path("", include(legacy_v3_urls)),
+    path("plugin/ansible/", include(v3_plugin_urls)),
 ]
 
 urlpatterns = [
@@ -91,5 +154,7 @@ urlpatterns = [
     path(GALAXY_API_ROOT + "v2/", include(v2_urls)),
     path(GALAXY_API_ROOT + "v3/", include(v3_urls)),
     path(GALAXY_API_ROOT, GalaxyVersionView.as_view()),
+    path(GALAXY_API_ROOT.split("<path:path>")[0] + "api/v3/", include(v3_urls)),
+    path(GALAXY_API_ROOT.split("<path:path>")[0] + "api/", GalaxyVersionView.as_view()),
     url(r"^pulp/api/v3/ansible/copy/$", CopyViewSet.as_view({"post": "create"})),
 ]
