@@ -144,7 +144,9 @@ v3_collection_urls = [
 ]
 
 v3_plugin_urls = [
-    path("collections/<str:distro_base_path>/", include(v3_collection_urls)),
+    # path:var captures /, so it has to have something at the end to make it work
+    # correctly.
+    path("content/<path:distro_base_path>/collections/", include(v3_collection_urls)),
     path(
         "imports/collections/<uuid:pk>/",
         views_v3.CollectionImportViewSet.as_view({"get": "retrieve"}),

@@ -50,7 +50,7 @@ class CollectionSerializer(serializers.ModelSerializer):
         """Get href."""
         ctx = get_distro_context(self.context)
         return reverse(
-            "collections-detail",
+            settings.ANSIBLE_URL_NAMESPACE + "collections-detail",
             kwargs={
                 **ctx,
                 "namespace": obj.namespace,
@@ -61,7 +61,7 @@ class CollectionSerializer(serializers.ModelSerializer):
         """Get a link to a collection versions list."""
         ctx = get_distro_context(self.context)
         return reverse(
-            "collection-versions-list",
+            settings.ANSIBLE_URL_NAMESPACE + "collection-versions-list",
             kwargs={
                 **ctx,
                 "namespace": obj.namespace,
@@ -90,7 +90,7 @@ class CollectionSerializer(serializers.ModelSerializer):
         )[0]
         ctx = get_distro_context(self.context)
         href = reverse(
-            "collection-versions-detail",
+            settings.ANSIBLE_URL_NAMESPACE + "collection-versions-detail",
             kwargs={
                 **ctx,
                 "namespace": obj.namespace,
@@ -125,7 +125,7 @@ class CollectionVersionListSerializer(serializers.ModelSerializer):
         ctx = get_distro_context(self.context)
 
         return reverse(
-            "collection-versions-detail",
+            settings.ANSIBLE_URL_NAMESPACE + "collection-versions-detail",
             kwargs={
                 **ctx,
                 "namespace": obj.namespace,
@@ -156,7 +156,7 @@ class CollectionRefSerializer(serializers.Serializer):
         """Returns link to a collection."""
         ctx = get_distro_context(self.context)
         return reverse(
-            "collections-detail",
+            settings.ANSIBLE_URL_NAMESPACE + "collections-detail",
             kwargs={
                 **ctx,
                 "namespace": obj.namespace,
@@ -242,7 +242,7 @@ class UnpaginatedCollectionVersionSerializer(CollectionVersionListSerializer):
             filename_path = obj.relative_path.lstrip("/")
 
             download_url = reverse(
-                "collection-artifact-download",
+                settings.ANSIBLE_URL_NAMESPACE + "collection-artifact-download",
                 kwargs={"distro_base_path": distro_base_path, "filename": filename_path}
             )
 

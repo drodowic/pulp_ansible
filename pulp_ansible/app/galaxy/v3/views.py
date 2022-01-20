@@ -413,7 +413,7 @@ class CollectionUploadViewSet(
 
         data = {
             "task": reverse(
-                "collection-imports-detail",
+                settings.ANSIBLE_URL_NAMESPACE + "collection-imports-detail",
                 kwargs={"pk": async_result.pk},
                 request=None,
             )
@@ -619,12 +619,16 @@ class RedirectLegacyDistroView(RedirectView):
         if "path" not in kwargs:
             if settings.ANSIBLE_DEFAULT_DISTRIBUTION_PATH is None:
                 raise NotFound()
-            else: 
+            else:
                 path = settings.ANSIBLE_DEFAULT_DISTRIBUTION_PATH
         else:
             path = self.kwargs["path"]
+            # remove the old path kwarg since we're redirecting to the new api endpoints
+            del kwargs['path']
 
-        return reverse_lazy(self.url, request=self.request, kwargs={ **self.kwargs, "distro_base_path": path})
+        kwargs = {**self.kwargs, "distro_base_path": path}
+
+        return reverse_lazy(settings.ANSIBLE_URL_NAMESPACE + self.url, request=self.request, kwargs=kwargs)
 
 
 class RedirectLegacyView(RedirectView):
@@ -632,4 +636,4 @@ class RedirectLegacyView(RedirectView):
     query_string = True
 
     def get_redirect_url(self, *args, **kwargs):
-        return reverse_lazy(self.url, request=self.request, kwargs={ **self.kwargs})
+        return reverse_lazy(settings.ANSIBLE_URL_NAMESPACE + self.url, request=self.request, kwargs={**self.kwargs})
