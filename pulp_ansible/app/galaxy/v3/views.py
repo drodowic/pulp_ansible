@@ -618,6 +618,11 @@ class RedirectLegacyDistroView(RedirectView):
     def get_redirect_url(self, *args, **kwargs):
         if "path" not in kwargs:
             if settings.ANSIBLE_DEFAULT_DISTRIBUTION_PATH is None:
+                
+
+
+
+                # note: raising NotFound doesn't return a 404. Not sure how to handle this
                 raise NotFound()
             else:
                 path = settings.ANSIBLE_DEFAULT_DISTRIBUTION_PATH
