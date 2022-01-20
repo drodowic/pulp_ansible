@@ -8,7 +8,7 @@ from django.db.models import F, Q
 from django.db.models.expressions import Window
 from django.db.models.functions.window import FirstValue
 from django.http import StreamingHttpResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.utils.dateparse import parse_datetime
 from django_filters import filters
 from django.views.generic.base import RedirectView
@@ -21,7 +21,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse, reverse_lazy
 from rest_framework import serializers
 from rest_framework import status as http_status
-from rest_framework import viewsets
+from rest_framework import viewsets, views
 from rest_framework.exceptions import NotFound
 
 from pulpcore.plugin.exceptions import DigestValidationError
@@ -45,6 +45,7 @@ from pulp_ansible.app.models import (
     Collection,
     CollectionVersion,
     CollectionImport,
+    ContentRedirectContentGuard
 )
 from pulp_ansible.app.serializers import (
     CollectionOneShotSerializer,
@@ -418,6 +419,33 @@ class CollectionUploadViewSet(
             )
         }
         return Response(data, status=http_status.HTTP_202_ACCEPTED)
+
+
+class CollectionArtifactDownloadView(views.APIView):
+    action = 'download'
+
+    def urlpattern(*args, **kwargs):
+        return "ansible-collection-download-viewset"
+
+    def get(self, request, *args, **kwargs):
+        distro_base_path = self.kwargs['distro_base_path']
+        filename = self.kwargs['filename']
+        prefix = settings.CONTENT_PATH_PREFIX.strip('/')
+        distribution = AnsibleDistribution.objects.get(base_path=distro_base_path)
+
+        url = '{host}/{prefix}/{distro_base_path}/{filename}'.format(
+            host=settings.CONTENT_ORIGIN.strip("/"),
+            prefix=prefix,
+            distro_base_path=distro_base_path,
+            filename=filename,
+        )
+
+        if distribution.content_guard:
+            guard = distribution.content_guard.cast()
+            if guard.TYPE == ContentRedirectContentGuard.TYPE:
+                return redirect(guard.preauthenticate_url(url))
+
+        return redirect(url)
 
 
 class CollectionVersionViewSet(

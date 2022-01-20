@@ -50,6 +50,11 @@ legacy_v3_collection_urls = [
         name="legacy-v3-collection-artifact-upload",
     ),
     path(
+        "artifacts/collections/<str:path>/<str:filename>",
+        views_v3.RedirectLegacyDistroView.as_view(url="collection-artifact-download"),
+        name="legacy-v3-collection-artifact-download",
+    ),
+    path(
         "collections/<str:namespace>/<str:name>/",
         views_v3.RedirectLegacyDistroView.as_view(url="collections-detail"),
         name="legacy-v3-collections-detail",
@@ -97,9 +102,14 @@ v3_collection_urls = [
         "index/", views_v3.CollectionViewSet.as_view({"get": "list"}), name="collections-list"
     ),
     path(
-        "artifacts/collections/",
+        "artifacts/",
         views_v3.CollectionUploadViewSet.as_view({"post": "create"}),
         name="collection-artifact-upload",
+    ),
+    path(
+        "artifacts/<str:filename>",
+        views_v3.CollectionArtifactDownloadView.as_view(),
+        name="collection-artifact-download",
     ),
     path(
         "index/<str:namespace>/<str:name>/",

@@ -238,12 +238,23 @@ class UnpaginatedCollectionVersionSerializer(CollectionVersionListSerializer):
         """
         content_artifact = ContentArtifact.objects.select_related("artifact").filter(content=obj)
         if content_artifact.get().artifact:
-            host = settings.ANSIBLE_CONTENT_HOSTNAME.strip("/")
-
             distro_base_path = self.context.get("path", self.context["distro_base_path"])
             filename_path = obj.relative_path.lstrip("/")
-            download_url = f"{host}/{distro_base_path}/{filename_path}"
-            return download_url
+
+            download_url = reverse(
+                "collection-artifact-download",
+                kwargs={"distro_base_path": distro_base_path, "filename": filename_path}
+            )
+
+            # Normally would just pass request to reverse and DRF would automatically build the
+            # absolute URI for us. However there's a weird bug where, because there's a kwarg
+            # in the URL for this view called "version" (the collection version), DRF gets
+            # confused and thinks we're using a versioning scheme
+            # (https://www.django-rest-framework.org/api-guide/versioning/) and attempts to insert
+            # the version into kwargs, which causes the reverse lookup to fail.
+
+            request = self.context['request']
+            return request.build_absolute_uri(download_url)
 
     def get_git_url(self, obj) -> str:
         """
